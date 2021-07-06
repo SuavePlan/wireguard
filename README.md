@@ -55,12 +55,15 @@ This script:
 ### Usage
 
 ```bash
-wg-ubuntu-server-up.sh [--clients=<clients_count>] [--no-reboot] [--no-unbound]
+wg-ubuntu-server-up.sh [--clients=<clients_count>] [--cidr=<cidr_address>] [--listen-port=<listen_port>] [--dns=<dns_ip>] [--no-reboot] [--no-unbound]
 ```
 
 Options:
 
-* `--clients=<clients_count>` how many client's configs will be created
+* `--clients=<clients_count>` how many client configs will be generated (10 as default)
+* `--cidr=<cidr_address>` the cidr network range for the new wireguard network (10.0.0.0/24 as default)
+* `--dns=<dns_ip>` DNS server address (uses wireguard ip address as default, if --no-unbound is selected 1.1.1.1 is chosen)
+* `--listen-port=<listen_port>` the port wireguard listens on (51820 as default)
 * `--no-unbound` disables Unbound server installation (1.1.1.1 will be used as
    a default DNS for client's configs)
 * `--no-reboot` disables rebooting at the end of the script execution
@@ -95,14 +98,16 @@ Install [WireGuard](https://www.wireguard.com) if it's not installed.
 ### Usage
 
 ```bash
-./wg-genconf.sh [<number_of_clients> [<dns_ip> [<server_public_ip>]]]
+./wg-genconf.sh  [--clients=<clients_count>] [--cidr=<cidr_address>] [--dns=<dns_ip>] [--server-ip=<server_ip>] [--listen-port=<listen_port>]
 ```
 
 Where:
 
-* `number_of_clients` how many client's configs will be generated
-* `dns_ip` the script should use this IP as a DNS address
-* `server_public_ip` the script should use this IP as a server address
+* `clients` how many client configs will be generated (10 as default)
+* `cidr` the cidr network range for the new wireguard network (10.0.0.0/24 as default)
+* `dns` the script should use this IP as a DNS address (uses wireguard ip address as default)
+* `server-ip` the script should use this IP as a server address (host address as default)
+* `listen-port` the port wireguard listens on (51820 as default)
 
 
 ### Example of usage:
@@ -112,13 +117,17 @@ Where:
 ```
 
 ```bash
-./wg-genconf.sh 10
+./wg-genconf.sh --clients=10
 ```
 
 ```bash
-./wg-genconf.sh 10 1.1.1.1
+./wg-genconf.sh --clients=10 --cidr=10.0.0.0/24
 ```
 
 ```bash
-./wg-genconf.sh 10 1.1.1.1 157.245.73.253
+./wg-genconf.sh --dns=1.1.1.1 --server-ip=157.245.73.253
+```
+
+```bash
+./wg-genconf.sh --clients=10 --cidr=10.0.0.0/24 --dns=1.1.1.1 --server-ip=157.245.73.253 --listen-port=51821
 ```

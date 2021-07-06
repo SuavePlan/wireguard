@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # usage:
-#     wg-ubuntu-server-up.sh [--clients=<clients_count>] [--no-reboot] [--no-unbound]
+#     wg-debian-server-up.sh [--clients=<clients_count>] [--cidr=<cidr_address>] [--listen-port=<listen_port>] [--dns=<dns_ip>] [--no-reboot] [--no-unbound]
 #
 
 set -e # exit when any command fails
@@ -13,12 +13,18 @@ working_dir="$HOME/wireguard"
 clients=10
 reboot_enabled=true
 unbound_enabled=true
+cidr=""
+dns_ip=""
+listen_port=""
 
 for arg in "$@"
 do
   [[ "${arg}" == "--no-reboot" ]] && reboot_enabled=
   [[ "${arg}" == "--no-unbound" ]] && unbound_enabled=
   [[ "${arg}" == "--clients="* ]] && clients=${arg#*=}
+  [[ "${arg}" == "--cidr="* ]] && cidr=${arg#*=}
+  [[ "${arg}" == "--dns="* ]] && dns_ip=${arg#*=}
+  [[ "${arg}" == "--listen-port="* ]] && listen_port=${arg#*=}
 done
 
 # check a user is root
@@ -53,10 +59,10 @@ chmod +x ./wg-genconf.sh
 echo ----------------------generate configurations for "${clients}" clients
 if [[ ${unbound_enabled} ]]; then
    # use the wireguard server as a DNS resolver
-  ./wg-genconf.sh "${clients}"
+  ./wg-genconf.sh --clients="${clients}" --dns="${dns_ip}" --listen_port="${listen_port}" --cidr="${cidr}"
 else
   # use the cloudflare as a DNS resolver
-  ./wg-genconf.sh "${clients}" "1.1.1.1"
+  ./wg-genconf.sh --clients="${clients}" --dns="1.1.1.1" --listen_port="${listen_port}" --cidr="${cidr}"
 fi
 
 echo -----------------------------------move server\'s config to /etc/wireguard/
@@ -76,8 +82,8 @@ echo ---------------------------------------------------configure firewall rules
 iptables -A INPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
 iptables -A FORWARD -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
 iptables -A INPUT -p udp -m udp --dport 55000 -m conntrack --ctstate NEW -j ACCEPT
-iptables -A INPUT -s 10.0.0.0/24 -p tcp -m tcp --dport 53 -m conntrack --ctstate NEW -j ACCEPT
-iptables -A INPUT -s 10.0.0.0/24 -p udp -m udp --dport 53 -m conntrack --ctstate NEW -j ACCEPT
+iptables -A INPUT -s "${cidr}" -p tcp -m tcp --dport 53 -m conntrack --ctstate NEW -j ACCEPT
+iptables -A INPUT -s "${cidr}" -p udp -m udp --dport 53 -m conntrack --ctstate NEW -j ACCEPT
 
 # make firewall changes persistent
 echo iptables-persistent iptables-persistent/autosave_v4 boolean true | debconf-set-selections
@@ -112,9 +118,9 @@ server:
     # IPs authorised to access the DNS Server
     access-control: 0.0.0.0/0                 refuse
     access-control: 127.0.0.1                 allow
-    access-control: 10.0.0.0/24             allow
+    access-control: ${cidr}             allow
     # not allowed to be returned for public Internet  names
-    private-address: 10.0.0.0/24
+    private-address: ${cidr}
     #hide DNS Server info
     hide-identity: yes
     hide-version: yes
@@ -141,7 +147,7 @@ server:
     # ensure kernel buffer is large enough to not lose messages in traffic spikes
     so-rcvbuf: 1m
     # ensure privacy of local IP ranges
-    private-address: 10.0.0.0/24
+    private-address: ${cidr}
 ENDOFFILE
 
   # give root ownership of the Unbound config
@@ -151,7 +157,7 @@ ENDOFFILE
   systemctl stop systemd-resolved
   systemctl disable systemd-resolved
 
-  # enable Unbound in place of systemd-resovled
+  # enable Unbound in place of systemd-resolved
   systemctl enable unbound
   systemctl start unbound
 fi
