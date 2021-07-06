@@ -53,7 +53,7 @@ fi
 
 
 if [ -z "$dns_ip" ]; then # set dns server to the same as hostname if not found
-  dns_ip=wireguard_instance_ip
+  dns_ip=$wireguard_instance_ip
 fi
 
 if [ -z "$server_ip" ]; then
